@@ -42,6 +42,7 @@ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .card.held .face{box-shadow:0 2.4em 4em #000c}
 .el-givre{--c1:#eef7ff;--c2:#8fc3ee;--c3:#2f6fae;--ink:#0d2b4d;--s1:#cfe9ff;--s2:#4f8fd0}
 .el-etoile{--c1:#fff6d6;--c2:#f2c64e;--c3:#a7741a;--ink:#4a3000;--s1:#5c56b8;--s2:#1f2363}
+.el-sapin{--c1:#eaf7e4;--c2:#7cc46c;--c3:#2f7a34;--ink:#0f3312;--s1:#7fd17a;--s2:#1f4f24}
 .el-braise{--c1:#ffe6d8;--c2:#ee8150;--c3:#9e2a12;--ink:#4a1203;--s1:#c2501f;--s2:#3a1408}
 .front{background:linear-gradient(160deg,var(--c1),var(--c2));padding:.55em;color:var(--ink)}
 .r-legend .front{background:linear-gradient(135deg,#fff1b8,#d9a032 30%,#fff1b8 50%,#b97f17 75%,#fff1b8)}
@@ -52,7 +53,8 @@ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .ico{display:inline-grid;place-items:center;width:1.9em;height:1.9em;border-radius:50%;background:var(--c3);box-shadow:inset 0 -.15em 0 #0003}.ico svg{width:65%;height:65%}
 .ico.sm{width:1.6em;height:1.6em}
 .art{position:relative;height:44%;flex:none;border:.22em solid;border-color:#fffb var(--c3) var(--c3) #fffb;background:radial-gradient(ellipse at 50% 30%,var(--s1),var(--s2));overflow:hidden}
-.art svg{width:100%;height:100%;display:block}
+.art svg,.art img,.fart img,.sil img{width:100%;height:100%;display:block;object-fit:cover}
+.sil.ph{filter:blur(6px) grayscale(1);opacity:.3;border-radius:6px;overflow:hidden}
 .fl{transform-box:fill-box;transform-origin:50% 100%;animation:fl .5s ease-in-out infinite alternate}
 @keyframes fl{to{transform:scale(.9,1.1)}}
 .typ{background:var(--c3);color:#fff;font:italic .68em/1.3 'Crimson Pro',serif;padding:.15em .5em;text-align:center;border-radius:.3em}
@@ -164,39 +166,23 @@ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 <p class="note">Démo : 3 cartes d'exemple, scan simulé.</p>
 <div id="ov"></div>
 <canvas id="snow"></canvas>
+<script src="cartes.js"></script>
 <script>
 {
-const TOTAL=30,PER=6,PAGES=5;
 const $=s=>document.querySelector(s);
+const RMAP={rare:'rare',holo:'holo',legende:'legend',legend:'legend'};
+const CARDS=(typeof CARTES!=='undefined'?CARTES:[]).map(c=>({n:c.n,code:String(c.code||''),name:c.nom,el:c.element||'givre',rar:RMAP[c.rarete]||'rare',pv:c.pv,type:c.type||'',atk:c.attaques||[],short:c.resume||'',lore:c.histoire||'',clue:c.indice||'',photo:c.photo||'',svg:c.dessin||''}));
+const TOTAL=typeof TOTAL_CARTES!=='undefined'?TOTAL_CARTES:30,PER=6,PAGES=Math.ceil(TOTAL/PER);
 const ICON={
 givre:'<svg viewBox="0 0 24 24"><g stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5 12 6.5l2.5-2M9.5 19.5 12 17.5l2.5 2"/></g></svg>',
 etoile:'<svg viewBox="0 0 24 24"><path d="M12 2.5l2.8 6 6.5.7-4.9 4.4 1.4 6.4L12 16.8 6.2 20l1.4-6.4L2.7 9.2l6.5-.7z" fill="#fff"/></svg>',
+sapin:'<svg viewBox="0 0 24 24"><path d="M12 2l5 7h-3l4 6h-3l4 6H5l4-6H6l4-6H7z" fill="#fff"/></svg>',
 braise:'<svg viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-3-1-6 1-9z" fill="#fff"/></svg>'};
-const ELN={givre:'Givre',etoile:'Étoile',braise:'Braise'};
+const ELN={givre:'Givre',etoile:'Étoile',braise:'Braise',sapin:'Sapin'};
 const RN={rare:'Rare',holo:'Holo',legend:'Légendaire'};
 const RS={rare:'✦✦',holo:'✦✦✦',legend:'✦✦✦✦'};
-const STARS='<g fill="#fff"><circle cx="12" cy="10" r="1.2"/><circle cx="85" cy="14" r="1"/><circle cx="72" cy="6" r=".8"/><circle cx="24" cy="22" r=".7"/><circle cx="90" cy="30" r=".9"/><circle cx="8" cy="34" r=".8"/></g>';
-const ART={
-1:'<svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice">'+STARS+'<path d="M0 60Q25 52 50 58T100 56V70H0Z" fill="#f4faff"/><g stroke="#6b3f1d" stroke-width="2.6" fill="none" stroke-linecap="round"><path d="M43 27C40 18 35 13 28 9M38 19 31 20M35 14 34 7"/><path d="M57 27C60 18 65 13 72 9M62 19 69 20M65 14 66 7"/></g><ellipse cx="38" cy="31" rx="6" ry="3" fill="#8a5428" transform="rotate(-25 38 31)"/><ellipse cx="62" cy="31" rx="6" ry="3" fill="#8a5428" transform="rotate(25 62 31)"/><path d="M50 22c9 0 13 8 12 17-1 8-5 14-12 14s-11-6-12-14c-1-9 3-17 12-17z" fill="#9b6235"/><ellipse cx="50" cy="47" rx="8" ry="6" fill="#c99566"/><circle cx="45" cy="35" r="1.8" fill="#1a0e05"/><circle cx="55" cy="35" r="1.8" fill="#1a0e05"/><circle cx="50" cy="44" r="3.6" fill="#e3262d"/><circle cx="49" cy="43" r="1" fill="#fffa"/><path d="M41 53c6 4 12 4 18 0l1 6H40z" fill="#2f6fae"/></svg>',
-2:'<svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice">'+STARS+'<path d="M0 62Q50 54 100 62V70H0Z" fill="#fff3d0"/><polygon points="38,40 24,31 39,35" fill="#f0bf92"/><polygon points="62,40 76,31 61,35" fill="#f0bf92"/><circle cx="50" cy="41" r="13" fill="#f6cfa6"/><circle cx="43" cy="45" r="2.5" fill="#f29a8e"/><circle cx="57" cy="45" r="2.5" fill="#f29a8e"/><path d="M43 38q2-2 4 0M53 38q2-2 4 0M45 47q5 4 10 0" stroke="#3a2210" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M36 33Q38 20 50 14Q60 8 72 5Q63 16 64 33Z" fill="#2f8a3a"/><rect x="35" y="29" width="30" height="6" rx="3" fill="#fff"/><circle cx="72" cy="5" r="4" fill="#fff"/><polygon points="36,54 41,58 46,54 50,58 54,54 59,58 64,54 64,64 36,64" fill="#c2262d"/><circle cx="50" cy="61" r="2.5" fill="#e8c26a"/></svg>',
-3:'<svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice"><g fill="#ffd9a0"><circle cx="30" cy="14" r="1"/><circle cx="66" cy="10" r=".8"/><circle cx="58" cy="20" r=".7"/><circle cx="40" cy="6" r=".6"/></g><path d="M0 60H100V70H0Z" fill="#2a1206"/><g class="fl"><path d="M50 40C38 30 45 20 50 8C54 20 64 26 54 40Z" fill="#ff8a1f"/><path d="M50 40C44 34 47 27 50 20C53 27 57 33 52 40Z" fill="#ffe27a"/></g><rect x="18" y="38" width="60" height="20" rx="10" fill="#7a4422"/><path d="M24 44h30M30 51h36" stroke="#5a2f15" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="76" cy="48" rx="6" ry="10" fill="#d9a566"/><ellipse cx="76" cy="48" rx="3.5" ry="6" fill="none" stroke="#a8743c"/><ellipse cx="76" cy="48" rx="1.4" ry="2.4" fill="#a8743c"/><path d="M30 38c-4-4-9-3-11 0 4 0 6 2 7 5z" fill="#2f7a34"/><path d="M30 38c2-5 7-6 10-4-3 1-5 3-5 7z" fill="#3f9a44"/><circle cx="31" cy="37" r="2.2" fill="#d4202a"/><circle cx="34" cy="39.5" r="2" fill="#d4202a"/></svg>'};
-const CARDS=[
-{n:1,name:"Renne des Glaces",el:"givre",rar:"holo",pv:120,type:"Créature de Givre · 1,40 m · 180 kg",
- atk:[["Galop boréal","Traverse la toundra en un souffle.",40],["Souffle de givre","Gèle l'adversaire un tour.",70]],
- short:"Ses bois captent la lumière des aurores.",
- lore:"Il ne vole que les nuits sans lune, guidé par l'étoile polaire. On dit que ses bois retiennent la lumière des aurores boréales.",
- clue:"Là où dort le traîneau, sous la troisième latte."},
-{n:2,name:"Lutin Farceur",el:"etoile",rar:"rare",pv:60,type:"Esprit de l'Atelier · 0,60 m · 9 kg",
- atk:[["Emballage éclair","Emballe un cadeau en une seconde.",20],["Grelot moqueur","Déconcentre toute la tablée.",30]],
- short:"Personne ne l'a vu deux fois au même endroit.",
- lore:"Il cache les rubans, échange les étiquettes et rit en grelots. Personne ne l'a jamais vu deux fois au même endroit.",
- clue:"Compte les boules rouges du sapin : leur nombre ouvre la boîte bleue."},
-{n:3,name:"Esprit de la Bûche",el:"braise",rar:"legend",pv:200,type:"Gardien du Foyer · légendaire",
- atk:[["Chaleur du foyer","Réchauffe toute l'équipe.",50],["Flamme de minuit","Ne brûle qu'au douzième coup.",120]],
- short:"Sa flamme change de couleur à chaque vœu sincère.",
- lore:"Né de la toute première bûche de Noël, il veille sur chaque cheminée. Sa flamme change de couleur quand un vœu sincère est prononcé.",
- clue:"Le dernier indice t'attend là où l'on suspend les chaussettes."}];
-const START=[[1,'12 déc. · 14:32'],[2,'12 déc. · 15:05']];
+const art=c=>c.photo?`<img src="${c.photo}" alt="" draggable="false">`:c.svg;
+const START=(typeof DEMO_DEJA_TROUVEES!=='undefined'?DEMO_DEJA_TROUVEES:[]).filter(n=>CARDS.some(c=>c.n===n)).map(n=>[n,'12 déc. · 14:32']);
 let found=new Map(START);
 const byN=n=>CARDS.find(c=>c.n===n);
 const pad=n=>String(n).padStart(3,'0');
@@ -205,14 +191,14 @@ const mk=h=>{const t=document.createElement('template');t.innerHTML=h.trim();ret
 
 const front=c=>`<div class="face front"><div class="frame">
 <div class="top"><span class="nm">${c.name}</span><span class="pv">PV <b>${c.pv}</b><span class="ico">${ICON[c.el]}</span></span></div>
-<div class="art">${ART[c.n]}<div class="shine"></div></div>
+<div class="art">${art(c)}<div class="shine"></div></div>
 <div class="typ">${c.type}</div>
 ${c.atk.map(a=>`<div class="atk"><span class="ico sm">${ICON[c.el]}</span><div><b>${a[0]}</b><small>${a[1]}</small></div><span class="dmg">${a[2]}</span></div>`).join('')}
 <div class="desc">${c.short}</div>
 <div class="ft"><span>n°${pad(c.n)}/${TOTAL}</span><span class="rs">${RS[c.rar]}</span><span>${RN[c.rar]}</span></div>
 </div><div class="shine"></div><div class="glare"></div></div>`;
 const gift=()=>`<div class="face gift"><div class="seal">Grimoire<br>du Pôle<br>Nord</div></div>`;
-const fiche=c=>`<div class="face fiche"><div class="fh"><span>n°${pad(c.n)}</span><span>${ELN[c.el]} · ${RN[c.rar]}</span></div><h3>${c.name}</h3><div class="fart">${ART[c.n]}</div><p>${c.lore}</p><div class="clue"><b>Indice</b>${c.clue}</div><div class="fd">Découverte le ${found.get(c.n)||'—'}</div></div>`;
+const fiche=c=>`<div class="face fiche"><div class="fh"><span>n°${pad(c.n)}</span><span>${ELN[c.el]} · ${RN[c.rar]}</span></div><h3>${c.name}</h3><div class="fart">${art(c)}</div><p>${c.lore}</p><div class="clue"><b>Indice</b>${c.clue}</div><div class="fd">Découverte le ${found.get(c.n)||'—'}</div></div>`;
 const cardHTML=(c,back)=>`<div class="card el-${c.el} r-${c.rar}" data-n="${c.n}"><div class="tilt"><div class="flipper">${front(c)}${back==='gift'?gift():back==='fiche'?fiche(c):''}</div></div></div>`;
 
 const ST=new WeakMap();
@@ -289,7 +275,7 @@ const ppv=()=>innerWidth<720?1:2;
 function slot(n){
   const c=byN(n);
   if(c&&found.has(n))return `<div class="slot found" data-n="${n}">${cardHTML(c)}</div>`;
-  return `<div class="slot unk">${c?`<div class="sil">${ART[n]}</div>`:'<span class="q">?</span>'}<span class="no">n°${pad(n)}</span></div>`;
+  return `<div class="slot unk">${c?`<div class="sil${c.photo?' ph':''}">${art(c)}</div>`:'<span class="q">?</span>'}<span class="no">n°${pad(n)}</span></div>`;
 }
 function pageHTML(i){
   if(i<0||i>=PAGES)return '<div class="pg"></div>';
@@ -332,7 +318,7 @@ function updateUI(){
 $('#scan').onclick=()=>{
   const miss=CARDS.find(c=>!found.has(c.n));
   if(miss)reveal(miss.n);
-  else{found=new Map(START);pos.delete(3);renderTable();if(view==='book')renderBook();updateUI()}
+  else{found=new Map(START);for(const k of [...pos.keys()])if(!found.has(k))pos.delete(k);renderTable();if(view==='book')renderBook();updateUI()}
 };
 const ib=$('#ibook');
 const openBook=()=>{if(ib.classList.contains('open'))return;ib.classList.add('open');document.body.classList.remove('intro');setTimeout(()=>{setView('table');renderTable()},reduce?0:1700)};
@@ -354,6 +340,15 @@ function snow(t){cx.clearRect(0,0,cv.width,cv.height);cx.fillStyle='#ffffffcc';
   requestAnimationFrame(snow)}
 let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{sizeSnow();drawGarland();if(view==='table')renderTable();if(view==='book')renderBook()},150)});
 sizeSnow();drawGarland();requestAnimationFrame(snow);updateUI();
+function fromHash(){
+  const code=decodeURIComponent(location.hash.slice(1)).trim();if(!code)return;
+  const c=CARDS.find(x=>x.code===code);if(!c)return;
+  ib.classList.add('open');document.body.classList.remove('intro');
+  if(view!=='book')setView('table');if(!table.querySelector('.card'))renderTable();
+  closeOv();if(found.has(c.n))openDetail(c.n);else reveal(c.n);
+  history.replaceState(null,'',location.pathname+location.search);
+}
+fromHash();addEventListener('hashchange',fromHash);
 }
 </script>
 </body></html>

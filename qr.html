@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QR codes du grimoire</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Pro:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+/* VOICE: outil d'organisateur, sobre et imprimable
+   IDEA: une planche d'étiquettes à découper
+   PICTURE: la grille de QR codes elle-même
+   COLOUR and TYPE: blanc, encre, rouge cuir ; Cinzel + Crimson Pro
+   LAYOUT: réglages en haut, planche dessous, rien d'autre à l'impression */
+:root{color-scheme:light;--red:#9e1b22;--ink:#1d1410}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:#f4ede0;color:var(--ink);font:16px/1.5 'Crimson Pro',Georgia,serif}
+.bar{padding:20px max(4vw,16px);display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:#fff;border-bottom:1px solid #0001}
+h1{font:800 26px/1.1 'Cinzel',serif;margin:0 0 4px;width:100%}
+label{display:flex;flex-direction:column;font-size:14px;gap:4px;flex:1 1 320px}
+input[type=url]{font:16px 'Crimson Pro',serif;padding:10px 12px;border:1px solid #0003;border-radius:8px;min-height:44px}
+.chk{flex:0 0 auto;flex-direction:row;align-items:center;gap:8px;min-height:44px}
+button{font:600 14px 'Cinzel',serif;background:var(--red);color:#fff;border:0;border-radius:999px;padding:0 20px;min-height:44px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.help{width:100%;margin:0;font-size:14px;color:#5a4a40}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:20px max(4vw,16px)}
+.tag{background:#fff;border:2px solid var(--red);border-radius:14px;padding:14px;text-align:center;break-inside:avoid}
+.tag svg{width:100%;height:auto;display:block}
+.tag b{display:block;font:800 18px 'Cinzel',serif;color:var(--red);margin-top:6px}
+.tag small{display:block;font-size:13px;color:#5a4a40}
+.tag a{font-size:13px;color:#5a4a40;word-break:break-all}
+@media print{.bar{display:none}body{background:#fff}.sheet{grid-template-columns:repeat(3,6cm);gap:.6cm;padding:0}.tag{width:6cm}.tag a{display:none}}
+</style></head><body>
+<div class="bar">
+  <h1>QR codes du grimoire</h1>
+  <label>Adresse du grimoire (page index.html)<input type="url" id="base"></label>
+  <label class="chk"><input type="checkbox" id="names"> Afficher le nom des cartes</label>
+  <button id="print">Imprimer</button>
+  <p class="help">Un QR code par carte de cartes.js. Chaque code ouvre le grimoire et révèle sa carte. Le nom reste masqué par défaut pour ne pas gâcher la surprise.</p>
+</div>
+<div class="sheet" id="sheet"></div>
+<script src="qrcode.js"></script>
+<script src="cartes.js"></script>
+<script>
+{
+const base=document.getElementById('base'),names=document.getElementById('names'),sheet=document.getElementById('sheet');
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const guess=/github\.io$/.test(location.hostname)?location.href.replace(/[?#].*$/,'').replace(/qr\.html$/,'index.html'):'https://claude.ai/artifact/4VFfaAsQBDtmvVzai3ZnXm';
+let saved='';try{saved=localStorage.getItem('grimoire-base')||''}catch(e){}
+base.value=saved||guess;
+function render(){
+  const b=base.value.trim().replace(/#.*$/,'');
+  try{localStorage.setItem('grimoire-base',b)}catch(e){}
+  sheet.innerHTML=CARTES.map(c=>{
+    const url=b+'#'+c.code,q=qrcode(0,'M');q.addData(url);q.make();
+    return `<div class="tag">${q.createSvgTag({cellSize:4,margin:2,scalable:true})}<b>n°${String(c.n).padStart(3,'0')}</b><small>${names.checked?esc(c.nom):'Grimoire du Pôle Nord'}</small><a href="${esc(url)}">${esc(url)}</a></div>`;
+  }).join('');
+}
+base.addEventListener('input',render);names.addEventListener('change',render);
+document.getElementById('print').onclick=()=>{try{window.print()}catch(e){}};
+render();
+}
+</script>
+</body></html>
