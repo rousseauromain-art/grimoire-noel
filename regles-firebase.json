@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "trouvees": {
+      ".read": true,
+      "$code": {
+        ".write": true,
+        ".validate": "newData.isNumber() && $code.length <= 12"
+      }
+    }
+  }
+}

@@ -16,8 +16,9 @@
 //   photo     chemin d'une image, ex. "images/renne.jpg" (facultatif)
 //   dessin    dessin SVG utilisé si pas de photo (facultatif)
 //
-//  Photos : format paysage 10:7 (ex. 1000 × 700 px), JPG < 300 Ko,
-//  à déposer dans le dossier images/ du dépôt.
+//  Photos : format 1100 × 700 px (gabarit fourni), JPG < 300 Ko,
+//  à déposer dans le dossier images/ du dépôt. Garder le sujet
+//  dans la bande centrale : la fiche recadre le haut et le bas.
 //  Attention : chaque texte entre guillemets "..." ; une virgule après
 //  chaque carte.
 // ============================================================

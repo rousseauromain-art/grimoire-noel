@@ -26,6 +26,7 @@ body.intro header,body.intro .garland{opacity:0;pointer-events:none}
 .btn{border:1px solid #e8c26a77;border-radius:999px}
 .btn.gold{background:#9e1b22;border-color:var(--gold)}
 button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.net{font:13px 'Crimson Pro',serif;white-space:nowrap}.net.ok{color:#8fe3a0}.net.ko{color:#ff9b9b}
 .count{font:600 14px 'Cinzel',serif;color:var(--gold);white-space:nowrap}
 .view{position:fixed;inset:0;display:none}.view.on{display:block}
 .foot{position:fixed;left:0;right:0;bottom:10px;text-align:center;font-style:italic;color:#f3dcaacc;font-size:15px;pointer-events:none;padding:0 12px}
@@ -140,7 +141,7 @@ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 <header>
   <span class="brand">Grand Grimoire du Pôle Nord</span>
   <div class="seg" role="group" aria-label="Vue"><button data-v="table" aria-pressed="true">Table</button><button data-v="book" aria-pressed="false">Grimoire</button></div>
-  <span class="count" id="count"></span>
+  <span class="count" id="count"></span><span class="net" id="net" hidden></span>
   <button class="btn gold" id="scan">Simuler un scan</button>
 </header>
 <svg class="garland" id="garland" aria-hidden="true"></svg>
@@ -166,6 +167,7 @@ button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 <p class="note">Démo : 3 cartes d'exemple, scan simulé.</p>
 <div id="ov"></div>
 <canvas id="snow"></canvas>
+<script src="config.js"></script>
 <script src="cartes.js"></script>
 <script>
 {
@@ -183,7 +185,10 @@ const RN={rare:'Rare',holo:'Holo',legend:'Légendaire'};
 const RS={rare:'✦✦',holo:'✦✦✦',legend:'✦✦✦✦'};
 const art=c=>c.photo?`<img src="${c.photo}" alt="" draggable="false">`:c.svg;
 const START=(typeof DEMO_DEJA_TROUVEES!=='undefined'?DEMO_DEJA_TROUVEES:[]).filter(n=>CARDS.some(c=>c.n===n)).map(n=>[n,'12 déc. · 14:32']);
-let found=new Map(START);
+const DB=(typeof FIREBASE_URL!=='undefined'&&FIREBASE_URL)?String(FIREBASE_URL).trim().replace(/\/+$/,''):'';
+let found=new Map(DB?[]:START);
+const fmt=ts=>new Date(ts).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).replace(' à ',' · ');
+const byCode=code=>CARDS.find(c=>c.code===code);
 const byN=n=>CARDS.find(c=>c.n===n);
 const pad=n=>String(n).padStart(3,'0');
 const rand=(a,b)=>a+Math.random()*(b-a);
@@ -227,6 +232,7 @@ const cw=()=>Math.round(Math.max(130,Math.min(innerWidth*.21,(innerHeight-140)*.
 const place=(el,p)=>{el.style.transform=`translate(${p.x}px,${p.y}px) rotate(${p.r}deg)`};
 function clampPos(p){const w=cw(),h=w*1.4;p.x=Math.max(-w*.4,Math.min(innerWidth-w*.6,p.x));p.y=Math.max(60,Math.min(innerHeight-h*.5,p.y))}
 function addToTable(n,drop){
+  if(table.querySelector(`.card[data-n="${n}"]`))return;
   const el=mk(cardHTML(byN(n))),w=cw(),h=w*1.4,keys=[...found.keys()],i=keys.indexOf(n);
   if(!pos.has(n))pos.set(n,drop?{x:innerWidth/2-w/2,y:innerHeight/2-h/2+20,r:rand(-4,4)}:{x:innerWidth/2-w/2+(i-(keys.length-1)/2)*w*1.12+rand(-10,10),y:innerHeight/2-h/2+20+rand(-14,14),r:rand(-6,6)});
   const p=pos.get(n);clampPos(p);
@@ -248,7 +254,9 @@ function bindDrag(el,p,n){
 function renderTable(){table.querySelectorAll('.card').forEach(c=>c.remove());for(const n of found.keys())addToTable(n,false)}
 
 const ov=$('#ov');let ovLock=false,onClose=null;
-function closeOv(){if(ovLock)return;ov.className='';ov.innerHTML='';const f=onClose;onClose=null;if(f)f()}
+function closeOv(){if(ovLock)return;ov.className='';ov.innerHTML='';const f=onClose;onClose=null;if(f)f();if(queue.length)setTimeout(()=>{if(queue.length&&!ov.className){const [n,ts]=queue.shift();queueReveal(n,ts)}},400)}
+let queue=[];
+function queueReveal(n,ts){if(found.has(n))return;if(ov.className){if(!queue.some(q=>q[0]===n))queue.push([n,ts]);return}reveal(n,ts)}
 ov.addEventListener('click',closeOv);
 function openDetail(n){
   const c=byN(n);
@@ -257,8 +265,8 @@ function openDetail(n){
   el.addEventListener('click',e=>{e.stopPropagation();el.classList.toggle('flip')});
   ov.className='on';
 }
-function reveal(n){
-  found.set(n,new Date().toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).replace(' à ',' · '));
+function reveal(n,ts){
+  found.set(n,fmt(ts||Date.now()));
   updateUI();
   ov.innerHTML=`<p class="ovt">Nouvelle découverte</p><div class="ovc"><div class="rays"></div></div><p class="hint">&nbsp;</p>`;
   const box=ov.querySelector('.ovc'),el=mk(cardHTML(byN(n),'gift'));
@@ -311,14 +319,54 @@ function setView(v){
   if(v==='book')renderBook();
 }
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+let armed=0;
 function updateUI(){
   $('#count').textContent=`${found.size} / ${TOTAL} découvertes`;
-  $('#scan').textContent=found.size<CARDS.length?'Simuler un scan':'Recommencer la démo';
+  $('#scan').textContent=armed?'Confirmer la remise à zéro':found.size<CARDS.length?'Simuler un scan':DB?'Remettre à zéro':'Recommencer la démo';
+}
+function refresh(){updateUI();if(view==='table')renderTable();if(view==='book')renderBook()}
+const pending=new Set();
+function dbWrite(code,val,tries=0){
+  if(!DB)return;
+  if(val!==null)pending.add(code);
+  fetch(`${DB}/trouvees/${encodeURIComponent(code)}.json`,val===null?{method:'DELETE'}:{method:'PUT',body:JSON.stringify(val)})
+    .then(r=>{if(!r.ok)throw new Error(r.status);pending.delete(code)})
+    .catch(()=>{if(tries<20)setTimeout(()=>dbWrite(code,val,tries+1),3000)});
+}
+function setNet(ok){const n=$('#net');n.hidden=false;n.className='net '+(ok?'ok':'ko');n.textContent=ok?'● en direct':'● hors ligne'}
+function listen(){
+  let ready=false;
+  const es=new EventSource(`${DB}/trouvees.json`);
+  const handle=(kind,e)=>{
+    let m;try{m=JSON.parse(e.data)}catch(err){return}
+    if(!m)return;
+    const {path,data}=m;
+    if(path==='/'&&kind==='put'){
+      const all=data||{};
+      for(const n of [...found.keys()]){const c=byN(n);if(!c||(!(c.code in all)&&!pending.has(c.code))){found.delete(n);pos.delete(n)}}
+      for(const [code,ts] of Object.entries(all)){const c=byCode(code);if(c&&!found.has(c.n)){if(ready)queueReveal(c.n,ts);else found.set(c.n,fmt(ts))}}
+      ready=true;refresh();return;
+    }
+    const entries=path==='/'?Object.entries(data||{}):[[path.slice(1).split('/')[0],data]];
+    let changed=false;
+    for(const [code,ts] of entries){const c=byCode(code);if(!c)continue;
+      if(ts===null){if(found.has(c.n)){found.delete(c.n);pos.delete(c.n);changed=true}}
+      else if(!found.has(c.n))queueReveal(c.n,ts);}
+    if(changed)refresh();
+  };
+  es.addEventListener('put',e=>handle('put',e));
+  es.addEventListener('patch',e=>handle('patch',e));
+  es.onopen=()=>setNet(true);
+  es.onerror=()=>setNet(false);
 }
 $('#scan').onclick=()=>{
   const miss=CARDS.find(c=>!found.has(c.n));
-  if(miss)reveal(miss.n);
-  else{found=new Map(START);for(const k of [...pos.keys()])if(!found.has(k))pos.delete(k);renderTable();if(view==='book')renderBook();updateUI()}
+  if(miss&&!armed){reveal(miss.n);dbWrite(miss.code,Date.now());return}
+  if(DB&&!armed){armed=setTimeout(()=>{armed=0;updateUI()},3000);updateUI();return}
+  clearTimeout(armed);armed=0;
+  if(DB){for(const n of found.keys())dbWrite(byN(n).code,null);found=new Map();pos.clear()}
+  else{found=new Map(START);for(const k of [...pos.keys()])if(!found.has(k))pos.delete(k)}
+  refresh();
 };
 const ib=$('#ibook');
 const openBook=()=>{if(ib.classList.contains('open'))return;ib.classList.add('open');document.body.classList.remove('intro');setTimeout(()=>{setView('table');renderTable()},reduce?0:1700)};
@@ -345,10 +393,11 @@ function fromHash(){
   const c=CARDS.find(x=>x.code===code);if(!c)return;
   ib.classList.add('open');document.body.classList.remove('intro');
   if(view!=='book')setView('table');if(!table.querySelector('.card'))renderTable();
-  closeOv();if(found.has(c.n))openDetail(c.n);else reveal(c.n);
+  closeOv();if(found.has(c.n))openDetail(c.n);else{reveal(c.n);dbWrite(c.code,Date.now())}
   history.replaceState(null,'',location.pathname+location.search);
 }
 fromHash();addEventListener('hashchange',fromHash);
+if(DB)listen();
 }
 </script>
 </body></html>
